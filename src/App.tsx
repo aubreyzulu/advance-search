@@ -18,6 +18,10 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
+import { Controller, useForm } from 'react-hook-form';
+import { useQuery } from 'react-query';
+import axios from 'axios';
+import React from 'react';
 
 const searchFilters = [
   'Acts',
@@ -31,6 +35,28 @@ const searchFilters = [
 const filterTopOfResults = ['Legislation', 'Articles'];
 
 function App() {
+  const { register, handleSubmit, control } = useForm({ mode: 'onChange' });
+  const [checkedValues, setCheckedValues] = React.useState<any>([]);
+  const { data } = useQuery(['query-search', checkedValues], async () => {
+    const res = await axios.get(
+      'http://83.229.71.153:8983/solr/legalmind/select?q=*%3A*&wt=json',
+      { params: { checkedValues } }
+    );
+    return res.data.response.docs;
+  });
+  console.log(data);
+  const onSubmit = (data: any) => {
+    console.log(data);
+  };
+
+  function handleSelect(checkedName: string) {
+    const newNames = checkedValues?.includes(checkedName)
+      ? checkedValues?.filter((name: string) => name !== checkedName)
+      : [...(checkedValues ?? []), checkedName];
+    setCheckedValues(newNames);
+    return newNames;
+  }
+
   return (
     <Container>
       <TopBar />
@@ -62,43 +88,80 @@ function App() {
           </Card>
         </Grid>
         <Grid item md={6} xs={12}>
-          <Typography variant="h6">Search words*</Typography>
-          <TextField
-            placeholder="search words"
-            size="small"
-            fullWidth
-            variant="outlined"
-          />
-          <br />
-          <br />
-          <Typography variant="h6">Search words in*</Typography>
-          <FormGroup row>
-            {searchFilters.map((filter) => (
-              <FormControlLabel
-                labelPlacement="end"
-                control={<Checkbox />}
-                label={filter}
-              />
-            ))}
-          </FormGroup>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <Typography variant="h6">Search words*</Typography>
+            <TextField
+              {...register('search', { required: true })}
+              placeholder="search words"
+              size="small"
+              fullWidth
+              variant="outlined"
+            />
+            <br />
+            <br />
+            <Typography variant="h6">Search words in*</Typography>
+            <Controller
+              control={control}
+              render={({ field }) => (
+                <FormGroup {...field} row>
+                  {searchFilters.map((filter) => (
+                    <FormControlLabel
+                      key={filter}
+                      labelPlacement="end"
+                      control={
+                        <Checkbox
+                          value={filter}
+                          onChange={(event) => handleSelect(event.target.value)}
+                        />
+                      }
+                      label={filter}
+                    />
+                  ))}
+                </FormGroup>
+              )}
+              name="title"
+            />
 
-          <br />
-          <br />
-          <Typography variant="h6">Top of Results*</Typography>
-          <FormGroup row>
-            {filterTopOfResults.map((filter) => (
-              <FormControlLabel
-                labelPlacement="end"
-                control={<Checkbox />}
-                label={filter}
-              />
-            ))}
-          </FormGroup>
-          <br />
-          <br />
-          <Button variant="contained" color="primary">
-            Search
-          </Button>
+            <br />
+            <br />
+            <Typography variant="h6">Top of Results*</Typography>
+            <Controller
+              control={control}
+              render={({ field }) => (
+                <FormGroup {...field} row>
+                  {filterTopOfResults.map((filter) => (
+                    <FormControlLabel
+                      key={filter}
+                      labelPlacement="end"
+                      control={
+                        <Checkbox
+                          value={filter}
+                          onChange={(event) => handleSelect(event.target.value)}
+                        />
+                      }
+                      label={filter}
+                    />
+                  ))}
+                </FormGroup>
+              )}
+              name="docType"
+            />
+
+            <br />
+            <br />
+            <Button type="submit" variant="contained" color="primary">
+              Search
+            </Button>
+          </form>
+
+          {data?.map((item: any) => (
+            <>
+              <Typography>{item.title.toString()}</Typography>
+              <Typography>{item.docType.toString()}</Typography>
+              <div>{item.p.toString()}</div>
+              <hr />
+            </>
+          ))}
         </Grid>
         <Grid item md={3} xs={12}>
           {/* <Paper sx={{ mt: 6 }}> */}
